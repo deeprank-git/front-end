@@ -1,10 +1,10 @@
-import Navbar from "../../components/Navbar";
+import { SidebarProvider } from "./SidebarContext";
+import EmployeeShell from "./EmployeeShell";
 
 const EmployeeLayout = ({ children }) => (
-  <div className="min-h-screen bg-slate-100">
-    <Navbar />
-    <main className="mx-auto max-w-7xl px-6 py-8">{children}</main>
-  </div>
+  <SidebarProvider>
+    <EmployeeShell>{children}</EmployeeShell>
+  </SidebarProvider>
 );
 
 export default EmployeeLayout;
