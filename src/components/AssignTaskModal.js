@@ -74,8 +74,8 @@ export default function AssignTaskModal({ isOpen, onClose, onTaskAssigned, allEm
       />
 
       {/* Slide-out Drawer Panel Container */}
-      <div className={`relative h-full w-full max-w-md bg-white p-8 shadow-2xl border-l border-slate-100 flex flex-col justify-between transform transition-transform duration-300 ease-out ${animate ? 'translate-x-0' : 'translate-x-full'}`}>
-        <div>
+      <div className={`relative h-full w-full max-w-md bg-white shadow-2xl border-l border-slate-100 flex flex-col transform transition-transform duration-300 ease-out ${animate ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="flex-1 overflow-y-auto p-8 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-xl font-bold text-slate-900">Assign Task</h3>
@@ -150,7 +150,7 @@ export default function AssignTaskModal({ isOpen, onClose, onTaskAssigned, allEm
           </form>
         </div>
 
-        <div className="pt-6 border-t border-slate-100 flex flex-col gap-3">
+        <div className="px-8 py-5 border-t border-slate-100 flex flex-col gap-3 bg-white">
           <button type="submit" onClick={handleSubmit} className="w-full rounded-xl bg-blue-600 py-3 text-sm font-bold text-white hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2">
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
             Assign Task

@@ -4,11 +4,195 @@ import AddEmployeeModal from "@/components/AddEmployeeModal";
 import AssignTaskModal from "@/components/AssignTaskModal";
 import CreateProjectModal from "@/components/CreateProjectModal";
 
+// ─── Task Completion Line Chart ───────────────────────────────────────────────
+
+const VW = 580, VH = 160;
+const PAD = { t: 12, b: 8, l: 10, r: 10 };
+
+function TaskCompletionChart() {
+  const [pts, setPts]     = useState([]);
+  const [drawn, setDrawn] = useState(false);
+  const [hov, setHov]     = useState(null);
+
+  useEffect(() => {
+    let v = 35 + Math.random() * 20;
+    const gen = Array.from({ length: 30 }, (_, i) => {
+      v = Math.max(8, Math.min(96, v + (Math.random() - 0.42) * 18));
+      return { day: i + 1, val: Math.round(v) };
+    });
+    setPts(gen);
+    const t = setTimeout(() => setDrawn(true), 150);
+    return () => clearTimeout(t);
+  }, []);
+
+  if (!pts.length) return null;
+
+  const vals   = pts.map((p) => p.val);
+  const minV   = Math.min(...vals);
+  const maxV   = Math.max(...vals);
+  const range  = maxV - minV || 1;
+  const avg    = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+  const trend  = vals[vals.length - 1] >= vals[0];
+  const netChg = Math.abs(vals[vals.length - 1] - vals[0]);
+  const maxIdx = vals.indexOf(maxV);
+
+  const cx = (i) => PAD.l + (i / (pts.length - 1)) * (VW - PAD.l - PAD.r);
+  const cy = (v) => VH - PAD.b - ((v - minV) / range) * (VH - PAD.t - PAD.b);
+
+  const linePath = pts.reduce((acc, p, i) => {
+    if (i === 0) return `M ${cx(0)} ${cy(p.val)}`;
+    const ox = cx(i - 1), oy = cy(pts[i - 1].val);
+    const nx = cx(i),     ny = cy(p.val);
+    const cpx = (ox + nx) / 2;
+    return `${acc} C ${cpx} ${oy} ${cpx} ${ny} ${nx} ${ny}`;
+  }, "");
+
+  const areaPath = `${linePath} L ${cx(pts.length - 1)} ${VH} L ${cx(0)} ${VH} Z`;
+
+  const gridLevels = [0, 0.25, 0.5, 0.75, 1];
+
+  const handleMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const relX = ((e.clientX - rect.left) / rect.width) * VW;
+    const raw  = ((relX - PAD.l) / (VW - PAD.l - PAD.r)) * (pts.length - 1);
+    setHov(Math.max(0, Math.min(pts.length - 1, Math.round(raw))));
+  };
+
+  return (
+    <div className="lg:col-span-2 bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col gap-3">
+
+      {/* Header */}
+      <div className="flex items-center justify-between flex-shrink-0">
+        <div>
+          <h3 className="text-base font-bold text-slate-900">Task Completion Trend</h3>
+          <p className="text-xs text-slate-400">Daily productivity over the last 30 days</p>
+        </div>
+        <span className="text-[10px] font-bold tracking-wider text-slate-500 bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-md">
+          Last 30 Days
+        </span>
+      </div>
+
+      {/* Summary pills */}
+      <div className="grid grid-cols-3 gap-2 flex-shrink-0">
+        {[
+          { val: avg,                  label: "Daily Avg",  bg: "bg-blue-50 border-blue-100",                      text: "text-blue-600",    sub: "text-blue-400"    },
+          { val: maxV,                 label: "Peak Day",   bg: "bg-emerald-50 border-emerald-100",                 text: "text-emerald-600", sub: "text-emerald-400" },
+          { val: `${trend ? "↑" : "↓"} ${netChg}`, label: "Net Change", bg: trend ? "bg-emerald-50 border-emerald-100" : "bg-red-50 border-red-100", text: trend ? "text-emerald-600" : "text-red-500", sub: trend ? "text-emerald-400" : "text-red-400" },
+        ].map(({ val, label, bg, text, sub }) => (
+          <div key={label} className={`rounded-xl border px-3 py-2.5 ${bg}`}>
+            <p className={`text-xl font-black ${text}`}>{val}</p>
+            <p className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 ${sub}`}>{label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Chart */}
+      <div
+        className="flex-1 min-h-[120px] relative"
+        onMouseMove={handleMouseMove}
+        onMouseLeave={() => setHov(null)}
+      >
+        <svg className="w-full h-full" viewBox={`0 0 ${VW} ${VH}`} preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="mgGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"  stopColor="#2563eb" stopOpacity="0.22" />
+              <stop offset="90%" stopColor="#2563eb" stopOpacity="0.01" />
+            </linearGradient>
+          </defs>
+
+          {/* Grid lines */}
+          {gridLevels.map((lvl) => {
+            const gv = minV + lvl * range;
+            return (
+              <g key={lvl}>
+                <line
+                  x1={PAD.l} y1={cy(gv)} x2={VW - PAD.r} y2={cy(gv)}
+                  stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 3"
+                />
+                <text x={PAD.l - 2} y={cy(gv)} fontSize="7" fill="#cbd5e1" textAnchor="end" dominantBaseline="middle">
+                  {Math.round(gv)}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Area fill — fades in after line draws */}
+          <path
+            d={areaPath}
+            fill="url(#mgGrad)"
+            style={{ opacity: drawn ? 1 : 0, transition: "opacity 0.8s ease 1.2s" }}
+          />
+
+          {/* Animated line draw */}
+          <path
+            d={linePath}
+            fill="none"
+            stroke="#2563eb"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeDasharray="2200"
+            strokeDashoffset={drawn ? 0 : 2200}
+            style={{ transition: "stroke-dashoffset 1.9s cubic-bezier(0.4,0,0.2,1)" }}
+          />
+
+          {/* Peak dot */}
+          {drawn && (
+            <>
+              <circle cx={cx(maxIdx)} cy={cy(maxV)} r="9" fill="#2563eb" opacity="0.12" />
+              <circle cx={cx(maxIdx)} cy={cy(maxV)} r="5" fill="white" stroke="#2563eb" strokeWidth="2.5" />
+              <circle cx={cx(maxIdx)} cy={cy(maxV)} r="2.5" fill="#2563eb" />
+            </>
+          )}
+
+          {/* Hover crosshair + dot */}
+          {hov !== null && (
+            <>
+              <line
+                x1={cx(hov)} y1={PAD.t} x2={cx(hov)} y2={VH - PAD.b}
+                stroke="#94a3b8" strokeWidth="1" strokeDasharray="3 3"
+              />
+              <circle cx={cx(hov)} cy={cy(pts[hov].val)} r="6" fill="#2563eb" opacity="0.2" />
+              <circle cx={cx(hov)} cy={cy(pts[hov].val)} r="4" fill="white" stroke="#2563eb" strokeWidth="2.5" />
+            </>
+          )}
+
+          {/* Transparent overlay to capture mouse */}
+          <rect x="0" y="0" width={VW} height={VH} fill="transparent" />
+        </svg>
+
+        {/* Floating tooltip */}
+        {hov !== null && (
+          <div
+            className="absolute pointer-events-none bg-slate-900 text-white rounded-xl px-3 py-2 shadow-2xl z-20 text-[10px] whitespace-nowrap"
+            style={{
+              left:      `${(cx(hov) / VW) * 100}%`,
+              top:       `${(cy(pts[hov].val) / VH) * 100}%`,
+              transform: "translateX(-50%) translateY(-120%)",
+            }}
+          >
+            <p className="font-bold text-white text-xs">Day {pts[hov].day}</p>
+            <p className="text-blue-300 mt-0.5">{pts[hov].val} tasks completed</p>
+            <div className="absolute top-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-t-slate-900" />
+          </div>
+        )}
+      </div>
+
+      {/* X-axis */}
+      <div className="flex items-center justify-between text-[10px] font-semibold text-slate-400 flex-shrink-0 px-1">
+        <span>Week 1</span><span>Week 2</span><span>Week 3</span><span>Week 4</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function ManagerDashboardPage() {
   // Modal State Management
   const [isEmployeeOpen, setIsEmployeeOpen] = useState(false);
-  const [isTaskOpen, setIsTaskOpen] = useState(false);
-  const [isProjectOpen, setIsProjectOpen] = useState(false);
+  const [isTaskOpen, setIsTaskOpen]         = useState(false);
+  const [isProjectOpen, setIsProjectOpen]   = useState(false);
 
   return (
     <div className="w-full bg-[#f8faff] min-h-screen px-8 py-10 font-sans text-slate-900">
@@ -42,42 +226,8 @@ export default function ManagerDashboardPage() {
 
         {/* Primary Row: Analytics Visualization */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Productivity Curve Line Graph */}
-          <div className="lg:col-span-2 bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-base font-bold text-slate-900">Task Completion Trend</h3>
-                <p className="text-xs text-slate-400">Productivity yield over the last 30 days</p>
-              </div>
-              <span className="text-[10px] font-bold tracking-wider text-slate-500 bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-md">
-                Last 30 Days
-              </span>
-            </div>
-            
-            {/* Smooth SVG Line Vector */}
-            <div className="relative h-48 w-full mt-2">
-              <svg className="w-full h-full overflow-visible" viewBox="0 0 600 180" preserveAspectRatio="none">
-                <defs>
-                  <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#2563eb" stopOpacity="0.12" />
-                    <stop offset="100%" stopColor="#2563eb" stopOpacity="0.00" />
-                  </linearGradient>
-                </defs>
-                {/* Area shading */}
-                <path d="M 0 110 Q 75 100 150 135 T 300 90 T 450 60 T 600 70 L 600 180 L 0 180 Z" fill="url(#chartGrad)" />
-                {/* Clean trend line */}
-                <path d="M 0 110 Q 75 100 150 135 T 300 90 T 450 60 T 600 70" fill="none" stroke="#2563eb" strokeWidth="3" strokeLinecap="round" />
-                
-                {/* Interactive Node Indicators */}
-                <circle cx="150" cy="135" r="4" fill="white" stroke="#2563eb" strokeWidth="2" />
-                <circle cx="300" cy="90" r="4" fill="white" stroke="#2563eb" strokeWidth="2" />
-                <circle cx="450" cy="60" r="4" fill="white" stroke="#2563eb" strokeWidth="2" />
-              </svg>
-            </div>
-            <div className="flex items-center justify-between text-[10px] font-semibold text-slate-400 mt-4 px-1">
-              <span>Week 1</span><span>Week 2</span><span>Week 3</span><span>Week 4</span>
-            </div>
-          </div>
+          {/* Animated Line Chart */}
+          <TaskCompletionChart />
 
           {/* Project Health Circular Meter */}
           <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col justify-between">
@@ -232,7 +382,7 @@ function AnimatedRadialMeter({ targetPercentage, valueLabel, subLabel }) {
     // Reset path allocation back to starting point instantly
     setPercentage(0);
     // Draw forward smoothly to exact mock design coordinate threshold
-    const timer = setTimeout(() => setPercentage(targetPercentage), 150);
+    const timer = setTimeout(() => setPercentage(targetPercentage), 300);
     return () => clearTimeout(timer);
   }, [targetPercentage]);
 

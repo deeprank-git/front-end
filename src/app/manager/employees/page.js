@@ -101,16 +101,16 @@ const EmployeesPage = () => {
   return (
     <div className="p-0 sm:p-1 w-full space-y-4 sm:space-y-6">
       {/* Top Header Section */}
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Employees</h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
             Manage your visionary talent and workforce velocity.
           </p>
         </div>
-        
+
         {/* Actions Row */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={() => { setSelectedEmployee(null); setIsAssignTaskOpen(true); }}
             className="px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition shadow-sm"
@@ -119,9 +119,9 @@ const EmployeesPage = () => {
           </button>
           <button
             onClick={() => setIsAddEmployeeOpen(true)}
-            className="px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition shadow-sm flex items-center justify-center gap-1.5"
+            className="px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition shadow-sm flex items-center gap-1.5"
           >
-            <span className="text-base font-medium">+</span> <span className="hidden sm:inline">Add</span> Employee
+            <span className="text-base font-medium">+</span> Add Employee
           </button>
         </div>
       </div>
@@ -139,12 +139,6 @@ const EmployeesPage = () => {
           <span className="absolute right-3 top-2.5 text-slate-400 pointer-events-none">🔍</span>
         </div>
         
-        <div className="flex items-center gap-2 self-end sm:self-auto">
-          <select className="px-3 py-2 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded-xl hover:border-slate-300 focus:outline-none">
-            <option>Sort by Name: A-Z</option>
-            <option>Sort by Name: Z-A</option>
-          </select>
-        </div>
       </div>
 
       {/* Employees Table Card */}

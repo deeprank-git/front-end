@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useNotifications } from "../../../components/NotificationContext";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -111,9 +112,14 @@ const fileIcon = (
   </svg>
 );
 
+const statusPills = [
+  { label: "In Progress",       value: "IN PROGRESS"    },
+  { label: "Submit for Review", value: "PENDING REVIEW" },
+  { label: "Mark Complete",     value: "COMPLETED"      },
+];
+
 const TaskDetailPanel = ({ task, onClose, onSubmit }) => {
   const p = priorityStyle[task.priority] ?? priorityStyle.MEDIUM;
-  const alreadySubmitted = task.status === "PENDING REVIEW" || task.status === "COMPLETED";
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -121,7 +127,7 @@ const TaskDetailPanel = ({ task, onClose, onSubmit }) => {
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
 
       {/* Panel */}
-      <div className="relative w-96 bg-white h-full flex flex-col shadow-2xl overflow-hidden">
+      <div className="relative w-full md:w-96 bg-white h-full flex flex-col shadow-2xl overflow-hidden">
 
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto">
@@ -179,26 +185,26 @@ const TaskDetailPanel = ({ task, onClose, onSubmit }) => {
               </div>
             </div>
 
-            {/* Submit button */}
+            {/* Status pills */}
             {!task.locked && (
-              alreadySubmitted ? (
-                <div className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-green-50 border border-green-200 text-green-600 text-sm font-bold">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                  Submitted for Review
+              <div>
+                <p className="text-xs font-bold text-slate-400 tracking-widest uppercase mb-2">Update Status</p>
+                <div className="flex flex-wrap gap-2">
+                  {statusPills.map(({ label, value }) => (
+                    <button
+                      key={value}
+                      onClick={() => onSubmit(task.id, value)}
+                      className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                        task.status === value
+                          ? "bg-blue-600 text-white border-blue-600"
+                          : "bg-white text-slate-600 border-slate-200 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 hover:shadow-sm"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
-              ) : (
-                <button
-                  onClick={() => onSubmit(task.id)}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                  </svg>
-                  Submit for Review
-                </button>
-              )
+              </div>
             )}
 
             {/* Attachments */}
@@ -294,7 +300,7 @@ const AssignNewTaskModal = ({ onClose, onAssign }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6">
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-3 md:mx-4 p-4 md:p-6 max-h-[90vh] overflow-y-auto">
 
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-base font-bold text-slate-900">Assign New Task</h2>
@@ -409,23 +415,51 @@ const AssignNewTaskModal = ({ onClose, onAssign }) => {
 
 // ─── Assigned to Me Tab ───────────────────────────────────────────────────────
 
+const statusLabels = {
+  "IN PROGRESS":    "Task marked as In Progress",
+  "PENDING REVIEW": "Task submitted for Review",
+  "COMPLETED":      "Task marked as Complete",
+};
+
+const statusDots = {
+  "IN PROGRESS":    "bg-blue-500",
+  "PENDING REVIEW": "bg-yellow-400",
+  "COMPLETED":      "bg-green-500",
+};
+
 const AssignedToMe = () => {
   const [tasks, setTasks]               = useState(assignedToMeInitial);
   const [selectedTask, setSelectedTask] = useState(null);
+  const [toast, setToast]               = useState(null);
+  const { addNotification }             = useNotifications() ?? {};
 
-  const handleSubmit = (id) => {
-    setTasks((prev) => prev.map((t) => t.id === id ? { ...t, status: "PENDING REVIEW" } : t));
-    setSelectedTask((prev) => ({ ...prev, status: "PENDING REVIEW" }));
+  const handleSubmit = (id, newStatus) => {
+    const task = tasks.find((t) => t.id === id);
+    setTasks((prev) => prev.map((t) => t.id === id ? { ...t, status: newStatus } : t));
+    setSelectedTask((prev) => ({ ...prev, status: newStatus }));
+    setToast(statusLabels[newStatus] ?? "Status updated");
+    setTimeout(() => setToast(null), 3000);
+    addNotification?.(`"${task?.name}" — ${statusLabels[newStatus]}`, statusDots[newStatus]);
   };
 
   return (
     <div>
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-slate-900 text-white text-sm font-semibold shadow-xl animate-fade-in">
+          <svg className="w-4 h-4 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+          {toast}
+        </div>
+      )}
+
       {/* Task Detail Panel */}
       {selectedTask && <TaskDetailPanel task={selectedTask} onClose={() => setSelectedTask(null)} onSubmit={handleSubmit} />}
 
       {/* Table */}
-      <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-x-auto">
+        <table className="w-full text-sm min-w-[700px]">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50">
               <th className="text-left px-5 py-3.5 text-xs font-bold text-slate-400 tracking-wider uppercase">Task Name</th>
@@ -441,7 +475,7 @@ const AssignedToMe = () => {
               <tr
                 key={task.id}
                 onClick={() => setSelectedTask(task)}
-                className={`hover:bg-slate-50 transition-colors cursor-pointer ${task.locked ? "opacity-60" : ""}`}
+                className="hover:bg-slate-50 transition-colors cursor-pointer"
               >
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-3">
@@ -450,7 +484,7 @@ const AssignedToMe = () => {
                     ) : (
                       <div className="w-4 h-4 rounded-full border-2 border-slate-300 flex-shrink-0" />
                     )}
-                    <span className={`font-semibold text-slate-800 ${task.locked ? "line-through text-slate-400" : ""}`}>{task.name}</span>
+                    <span className="font-semibold text-slate-800">{task.name}</span>
                   </div>
                 </td>
                 <td className="px-4 py-4"><StatusBadge status={task.status} /></td>
@@ -487,7 +521,7 @@ const AssignedByMeDetailPanel = ({ task, onClose }) => {
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
 
-      <div className="relative w-96 bg-white h-full flex flex-col shadow-2xl overflow-hidden">
+      <div className="relative w-full md:w-96 bg-white h-full flex flex-col shadow-2xl overflow-hidden">
 
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto">
@@ -583,13 +617,15 @@ const AssignedByMeDetailPanel = ({ task, onClose }) => {
 // ─── Assigned by Me Tab ───────────────────────────────────────────────────────
 
 const AssignedByMe = () => {
-  const [modalOpen, setModalOpen]     = useState(false);
-  const [tasks, setTasks]             = useState(assignedByMeInitial);
+  const [modalOpen, setModalOpen]       = useState(false);
+  const [tasks, setTasks]               = useState(assignedByMeInitial);
   const [selectedTask, setSelectedTask] = useState(null);
+  const { addNotification }             = useNotifications() ?? {};
 
   const handleAssign = (task) => {
     setTasks((prev) => [task, ...prev]);
     setModalOpen(false);
+    addNotification?.(`Task "${task.name}" assigned to ${task.assignedTo}`, "bg-purple-500");
   };
 
   return (
@@ -602,8 +638,8 @@ const AssignedByMe = () => {
           Assign New Task
         </button>
       </div>
-      <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-x-auto">
+        <table className="w-full text-sm min-w-[700px]">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50">
               <th className="text-left px-5 py-3.5 text-xs font-bold text-slate-400 tracking-wider uppercase">Task Title</th>
@@ -660,11 +696,11 @@ export const TasksContent = () => {
         <h2 className="text-xl font-bold text-slate-900">My Tasks</h2>
         <p className="text-sm text-slate-500 mt-0.5">Manage and monitor your tasks across all projects.</p>
       </div>
-      <div className="flex items-center gap-1 border-b border-slate-200">
-        <button onClick={() => setTab("assigned-to-me")} className={`px-4 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px ${tab === "assigned-to-me" ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}>
+      <div className="flex items-center gap-1 border-b border-slate-200 overflow-x-auto">
+        <button onClick={() => setTab("assigned-to-me")} className={`whitespace-nowrap px-4 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px ${tab === "assigned-to-me" ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}>
           Assigned to Me
         </button>
-        <button onClick={() => setTab("assigned-by-me")} className={`px-4 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px ${tab === "assigned-by-me" ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}>
+        <button onClick={() => setTab("assigned-by-me")} className={`whitespace-nowrap px-4 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px ${tab === "assigned-by-me" ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}>
           Assigned by Me
         </button>
       </div>

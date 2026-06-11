@@ -1,26 +1,21 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
-
-const defaultNotifications = [
-  { id: 1, text: "Sarah Jenkins mentioned you.",         time: "20 minutes ago", dot: "bg-blue-500",   read: false },
-  { id: 2, text: "Task Migration changed to Completed.", time: "3 hours ago",    dot: "bg-green-500",  read: false },
-  { id: 3, text: "Project Alpha deadline updated.",      time: "3 hours ago",    dot: "bg-yellow-400", read: false },
-  { id: 4, text: "New task has been assigned to you.",   time: "Yesterday",      dot: "bg-purple-500", read: false },
-];
+import { useNotifications } from "./NotificationContext";
 
 const Navbar = ({ onMenuClick, userInitial = "U", userName = "User" }) => {
-  const [open,   setOpen]   = useState(false);
-  const [notifs, setNotifs] = useState(defaultNotifications);
+  const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
+
+  const ctx = useNotifications();
+  const notifs      = ctx?.notifs      ?? [];
+  const markRead    = ctx?.markRead    ?? (() => {});
+  const markAllRead = ctx?.markAllRead ?? (() => {});
 
   const unreadCount = notifs.filter((n) => !n.read).length;
 
-  const markRead    = (id) => setNotifs((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
-  const markAllRead = ()   => setNotifs((prev) => prev.map((n) => ({ ...n, read: true })));
-
   useEffect(() => {
     const handleOutsideClick = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setOpen(false);
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setIsOpen(false);
     };
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
@@ -35,7 +30,7 @@ const Navbar = ({ onMenuClick, userInitial = "U", userName = "User" }) => {
           {onMenuClick && (
             <button
               onClick={onMenuClick}
-              className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors"
+              className="md:hidden p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors"
               aria-label="Toggle menu"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -54,7 +49,7 @@ const Navbar = ({ onMenuClick, userInitial = "U", userName = "User" }) => {
           {/* Notification Bell */}
           <div ref={dropdownRef} className="relative">
             <button
-              onClick={() => setOpen((prev) => !prev)}
+              onClick={() => setIsOpen((prev) => !prev)}
               className="relative p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors"
               aria-label="Notifications"
             >
@@ -67,7 +62,7 @@ const Navbar = ({ onMenuClick, userInitial = "U", userName = "User" }) => {
             </button>
 
             {/* Dropdown */}
-            {open && (
+            {isOpen && (
               <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-50">
 
                 {/* Header */}

@@ -1,6 +1,6 @@
 "use client";
-import { useSidebar } from "../SidebarContext";
-import { TasksContent } from "../my-tasks/page";
+
+import { useState, useEffect } from "react";
 
 // ─── Static Data ──────────────────────────────────────────────────────────────
 
@@ -23,14 +23,6 @@ const stats = [
   },
 ];
 
-const recentTasks = [
-  { name: "Refactor Auth Middleware",    project: "Visionary Project · Enterprise Dashboard", tag: "Coding",      tagColor: "bg-blue-100 text-blue-700" },
-  { name: "Design Glassmorphism UI Kit", project: "DeepRank Core · Design System",            tag: "Design",      tagColor: "bg-purple-100 text-purple-700" },
-  { name: "Sync with Marketing Team",    project: "Global Q3 · Marketing",                    tag: "Meeting",     tagColor: "bg-cyan-100 text-cyan-700" },
-  { name: "Update API Documentation",    project: "Backend API · Documentation",               tag: "Docs",        tagColor: "bg-slate-100 text-slate-600" },
-  { name: "Optimize Database Queries",   project: "Performance Patch · Core",                  tag: "Performance", tagColor: "bg-orange-100 text-orange-700" },
-];
-
 const dueToday = [
   { name: "Weekly Progress Report", meta: "Overdue by 3h",  overdue: true  },
   { name: "Review PR #2405",        meta: "Due at 6:00 PM", overdue: false },
@@ -50,13 +42,185 @@ const upcoming = [
   { name: "Final QA Review",        due: "In 7 days", border: "border-l-green-400" },
 ];
 
-// ─── Section Components ───────────────────────────────────────────────────────
+// ─── Weekly Activity Chart ────────────────────────────────────────────────────
+
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+const WeeklyChart = () => {
+  const [bars, setBars]       = useState([]);
+  const [animated, setAnimated] = useState(false);
+  const [hovered, setHovered]  = useState(null);
+  const [summary, setSummary]  = useState({ completed: 0, inProgress: 0, pending: 0 });
+
+  useEffect(() => {
+    const generated = DAYS.map((day) => ({
+      day,
+      completed:  Math.floor(Math.random() * 8) + 3,
+      inProgress: Math.floor(Math.random() * 5) + 1,
+      pending:    Math.floor(Math.random() * 4),
+    }));
+    setBars(generated);
+    setSummary({
+      completed:  generated.reduce((s, b) => s + b.completed, 0),
+      inProgress: generated.reduce((s, b) => s + b.inProgress, 0),
+      pending:    generated.reduce((s, b) => s + b.pending, 0),
+    });
+    const t = setTimeout(() => setAnimated(true), 100);
+    return () => clearTimeout(t);
+  }, []);
+
+  const maxTotal = Math.max(...bars.map((b) => b.completed + b.inProgress + b.pending), 1);
+  const gridSteps = [1, 0.75, 0.5, 0.25, 0];
+
+  return (
+    <div className="lg:col-span-2 rounded-2xl bg-white border border-slate-200 shadow-sm p-5 flex flex-col gap-4">
+
+      {/* Header */}
+      <div className="flex items-start justify-between flex-shrink-0">
+        <div>
+          <h3 className="text-sm font-bold text-slate-900">Weekly Task Activity</h3>
+          <p className="text-xs text-slate-400 mt-0.5">Live snapshot · new data on every refresh</p>
+        </div>
+        <div className="flex items-center gap-4">
+          {[
+            { color: "bg-emerald-400", label: "Completed"  },
+            { color: "bg-blue-400",    label: "In Progress" },
+            { color: "bg-slate-300",   label: "Pending"     },
+          ].map(({ color, label }) => (
+            <span key={label} className="flex items-center gap-1.5 text-xs text-slate-500">
+              <span className={`w-2.5 h-2.5 rounded-sm ${color}`} />
+              {label}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Summary pills */}
+      <div className="grid grid-cols-4 gap-2 flex-shrink-0">
+        {[
+          { value: summary.completed,                               label: "Completed",   bg: "bg-emerald-50 border-emerald-100", text: "text-emerald-600", sub: "text-emerald-400" },
+          { value: summary.inProgress,                              label: "In Progress", bg: "bg-blue-50 border-blue-100",       text: "text-blue-600",    sub: "text-blue-400"    },
+          { value: summary.pending,                                 label: "Pending",     bg: "bg-slate-50 border-slate-200",     text: "text-slate-600",   sub: "text-slate-400"   },
+          { value: summary.completed + summary.inProgress + summary.pending, label: "Total", bg: "bg-indigo-50 border-indigo-100", text: "text-indigo-600",  sub: "text-indigo-400"  },
+        ].map(({ value, label, bg, text, sub }) => (
+          <div key={label} className={`rounded-xl border px-3 py-2.5 text-center ${bg}`}>
+            <p className={`text-xl font-black ${text}`}>{value}</p>
+            <p className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 ${sub}`}>{label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Chart — fills remaining space */}
+      <div className="flex-1 min-h-0 flex flex-col">
+        <div className="flex-1 relative">
+
+          {/* Horizontal grid lines with y-axis labels */}
+          {gridSteps.map((step) => (
+            <div
+              key={step}
+              className="absolute left-0 right-0 flex items-center gap-2 pointer-events-none"
+              style={{ top: `${(1 - step) * 100}%` }}
+            >
+              <span className="text-[9px] text-slate-300 font-medium w-5 text-right flex-shrink-0 -translate-y-1/2">
+                {Math.round(step * maxTotal)}
+              </span>
+              <div className="flex-1 border-t border-dashed border-slate-100" />
+            </div>
+          ))}
+
+          {/* Bars */}
+          <div className="absolute inset-0 pl-7 flex items-end gap-2 pb-6">
+            {bars.map((bar, i) => {
+              const total      = bar.completed + bar.inProgress + bar.pending;
+              const totalPct   = (total / maxTotal) * 100;
+              const isHov      = hovered === i;
+
+              return (
+                <div
+                  key={bar.day}
+                  className="flex-1 h-full flex flex-col justify-end items-center relative cursor-pointer"
+                  onMouseEnter={() => setHovered(i)}
+                  onMouseLeave={() => setHovered(null)}
+                >
+                  {/* Tooltip */}
+                  {isHov && (
+                    <div className="absolute bottom-[calc(100%-1.5rem)] mb-2 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-medium rounded-xl px-3 py-2 whitespace-nowrap z-20 shadow-xl pointer-events-none">
+                      <p className="font-bold text-white text-xs mb-1.5 text-center">{bar.day}</p>
+                      <div className="flex flex-col gap-1">
+                        <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> {bar.completed} completed</span>
+                        <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-blue-400" /> {bar.inProgress} in progress</span>
+                        <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-slate-400" /> {bar.pending} pending</span>
+                      </div>
+                      <div className="mt-1.5 pt-1.5 border-t border-slate-700 text-center text-slate-300">Total: <span className="text-white font-bold">{total}</span></div>
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-t-slate-900" />
+                    </div>
+                  )}
+
+                  {/* Stacked bar */}
+                  <div
+                    className="w-full rounded-t-lg overflow-hidden flex flex-col"
+                    style={{
+                      height: animated ? `${totalPct}%` : "0%",
+                      transition: `height 0.65s cubic-bezier(0.34,1.25,0.64,1) ${i * 0.07}s`,
+                      opacity: hovered !== null && !isHov ? 0.35 : 1,
+                      transform: isHov ? "scaleX(1.1)" : "scaleX(1)",
+                      transitionProperty: "height, opacity, transform",
+                      transitionDuration: "0.65s, 0.2s, 0.2s",
+                    }}
+                  >
+                    {/* Pending — top */}
+                    {bar.pending > 0 && (
+                      <div
+                        style={{
+                          flex: bar.pending,
+                          background: "linear-gradient(180deg, #f8fafc, #e2e8f0)",
+                          minHeight: "3px",
+                        }}
+                      />
+                    )}
+                    {/* In Progress — middle */}
+                    {bar.inProgress > 0 && (
+                      <div
+                        style={{
+                          flex: bar.inProgress,
+                          background: "linear-gradient(180deg, #93c5fd, #3b82f6)",
+                          minHeight: "3px",
+                        }}
+                      />
+                    )}
+                    {/* Completed — bottom */}
+                    {bar.completed > 0 && (
+                      <div
+                        style={{
+                          flex: bar.completed,
+                          background: "linear-gradient(180deg, #6ee7b7, #10b981)",
+                          minHeight: "3px",
+                        }}
+                      />
+                    )}
+                  </div>
+
+                  {/* Day label */}
+                  <span className="absolute bottom-0 text-[10px] font-semibold text-slate-400">
+                    {bar.day}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Dashboard ────────────────────────────────────────────────────────────────
 
 const DashboardContent = () => (
   <div className="space-y-5">
 
     {/* Greeting */}
-    <div className="rounded-2xl bg-white border border-slate-200 shadow-sm px-7 py-6 flex items-center justify-between">
+    <div className="rounded-2xl bg-white border border-slate-200 shadow-sm px-4 md:px-7 py-5 md:py-6 flex items-center justify-between">
       <div>
         <h2 className="text-xl font-bold text-slate-900">Good morning, Adrian</h2>
         <p className="mt-1 text-sm text-slate-500">
@@ -76,7 +240,7 @@ const DashboardContent = () => (
     </div>
 
     {/* Stats */}
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {stats.map((s) => (
         <div key={s.label} className="rounded-2xl bg-white border border-slate-200 shadow-sm px-5 py-4 flex items-center gap-3">
           <div className={`flex items-center justify-center w-9 h-9 rounded-xl ${s.bg}`}>{s.icon}</div>
@@ -89,27 +253,10 @@ const DashboardContent = () => (
     </div>
 
     {/* Main Grid */}
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-stretch">
 
-      {/* Recent Tasks */}
-      <div className="lg:col-span-2 rounded-2xl bg-white border border-slate-200 shadow-sm p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-bold text-slate-900">Recent Tasks Summary</h3>
-          <a href="/employee/my-tasks" className="text-xs font-medium text-blue-600 hover:underline">View All</a>
-        </div>
-        <div className="space-y-1">
-          {recentTasks.map((task) => (
-            <div key={task.name} className="flex items-center gap-3 py-2.5 border-b border-slate-100 last:border-0">
-              <div className="w-4 h-4 rounded-full border-2 border-slate-300 flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-800 truncate">{task.name}</p>
-                <p className="text-xs text-slate-400 truncate">{task.project}</p>
-              </div>
-              <span className={`flex-shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${task.tagColor}`}>{task.tag}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Weekly Chart */}
+      <WeeklyChart />
 
       {/* Due Today + Notifications */}
       <div className="space-y-4">
@@ -148,7 +295,7 @@ const DashboardContent = () => (
     {/* Upcoming Deadlines */}
     <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-5">
       <h3 className="text-sm font-bold text-slate-900 mb-4">Upcoming Deadlines (Next 7 Days)</h3>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         {upcoming.map((item) => (
           <div key={item.name} className={`rounded-xl border-l-4 ${item.border} bg-slate-50 border border-slate-100 px-4 py-3`}>
             <p className="text-sm font-semibold text-slate-800">{item.name}</p>
@@ -164,29 +311,6 @@ const DashboardContent = () => (
   </div>
 );
 
-const Placeholder = ({ label }) => (
-  <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-14 flex flex-col items-center justify-center text-center">
-    <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
-      <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
-    </div>
-    <p className="text-sm font-semibold text-slate-700">{label}</p>
-    <p className="text-xs text-slate-400 mt-1">This section is coming soon.</p>
-  </div>
-);
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
-const EmployeeDashboardPage = () => {
-  const { activeSection } = useSidebar();
-
-  return (
-    <>
-      {activeSection === "dashboard" && <DashboardContent />}
-      {activeSection === "tasks"     && <TasksContent />}
-      {activeSection === "teams"     && <Placeholder label="Teams" />}
-      {activeSection === "settings"  && <Placeholder label="Settings" />}
-    </>
-  );
-};
+const EmployeeDashboardPage = () => <DashboardContent />;
 
 export default EmployeeDashboardPage;
