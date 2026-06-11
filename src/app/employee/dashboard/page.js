@@ -1,5 +1,6 @@
 "use client";
 import { useSidebar } from "../SidebarContext";
+import { TasksContent } from "../my-tasks/page";
 
 // ─── Static Data ──────────────────────────────────────────────────────────────
 
@@ -181,7 +182,7 @@ const EmployeeDashboardPage = () => {
   return (
     <>
       {activeSection === "dashboard" && <DashboardContent />}
-      {activeSection === "tasks"     && <Placeholder label="Tasks" />}
+      {activeSection === "tasks"     && <TasksContent />}
       {activeSection === "teams"     && <Placeholder label="Teams" />}
       {activeSection === "settings"  && <Placeholder label="Settings" />}
     </>
