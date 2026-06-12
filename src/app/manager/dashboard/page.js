@@ -10,9 +10,9 @@ const VW = 580, VH = 160;
 const PAD = { t: 12, b: 8, l: 10, r: 10 };
 
 function TaskCompletionChart() {
-  const [pts, setPts]     = useState([]);
-  const [drawn, setDrawn] = useState(false);
-  const [hov, setHov]     = useState(null);
+  const [pts, setPts]       = useState([]);
+  const [drawn, setDrawn]   = useState(false);
+  const [hov, setHov]       = useState(null);
 
   useEffect(() => {
     let v = 35 + Math.random() * 20;
@@ -65,7 +65,7 @@ function TaskCompletionChart() {
       <div className="flex items-center justify-between flex-shrink-0">
         <div>
           <h3 className="text-base font-bold text-slate-900">Task Completion Trend</h3>
-          <p className="text-xs text-slate-400">Daily productivity over the last 30 days</p>
+          <p className="text-xs text-slate-400">Productivity yield over the last 30 days</p>
         </div>
         <span className="text-[10px] font-bold tracking-wider text-slate-500 bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-md">
           Last 30 Days
@@ -75,9 +75,12 @@ function TaskCompletionChart() {
       {/* Summary pills */}
       <div className="grid grid-cols-3 gap-2 flex-shrink-0">
         {[
-          { val: avg,                  label: "Daily Avg",  bg: "bg-blue-50 border-blue-100",                      text: "text-blue-600",    sub: "text-blue-400"    },
-          { val: maxV,                 label: "Peak Day",   bg: "bg-emerald-50 border-emerald-100",                 text: "text-emerald-600", sub: "text-emerald-400" },
-          { val: `${trend ? "↑" : "↓"} ${netChg}`, label: "Net Change", bg: trend ? "bg-emerald-50 border-emerald-100" : "bg-red-50 border-red-100", text: trend ? "text-emerald-600" : "text-red-500", sub: trend ? "text-emerald-400" : "text-red-400" },
+          { val: avg,  label: "Daily Avg",  bg: "bg-blue-50 border-blue-100",     text: "text-blue-600",    sub: "text-blue-400"    },
+          { val: maxV, label: "Peak Day",   bg: "bg-emerald-50 border-emerald-100", text: "text-emerald-600", sub: "text-emerald-400" },
+          { val: `${trend ? "↑" : "↓"} ${netChg}`, label: "Net Change",
+            bg:   trend ? "bg-emerald-50 border-emerald-100" : "bg-red-50 border-red-100",
+            text: trend ? "text-emerald-600" : "text-red-500",
+            sub:  trend ? "text-emerald-400" : "text-red-400" },
         ].map(({ val, label, bg, text, sub }) => (
           <div key={label} className={`rounded-xl border px-3 py-2.5 ${bg}`}>
             <p className={`text-xl font-black ${text}`}>{val}</p>
@@ -105,32 +108,23 @@ function TaskCompletionChart() {
             const gv = minV + lvl * range;
             return (
               <g key={lvl}>
-                <line
-                  x1={PAD.l} y1={cy(gv)} x2={VW - PAD.r} y2={cy(gv)}
-                  stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 3"
-                />
-                <text x={PAD.l - 2} y={cy(gv)} fontSize="7" fill="#cbd5e1" textAnchor="end" dominantBaseline="middle">
+                <line x1={PAD.l} y1={cy(gv)} x2={VW - PAD.r} y2={cy(gv)}
+                  stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 3" />
+                <text x={PAD.l - 2} y={cy(gv)} fontSize="7" fill="#cbd5e1"
+                  textAnchor="end" dominantBaseline="middle">
                   {Math.round(gv)}
                 </text>
               </g>
             );
           })}
 
-          {/* Area fill — fades in after line draws */}
-          <path
-            d={areaPath}
-            fill="url(#mgGrad)"
-            style={{ opacity: drawn ? 1 : 0, transition: "opacity 0.8s ease 1.2s" }}
-          />
+          {/* Area fill */}
+          <path d={areaPath} fill="url(#mgGrad)"
+            style={{ opacity: drawn ? 1 : 0, transition: "opacity 0.8s ease 1.2s" }} />
 
           {/* Animated line draw */}
-          <path
-            d={linePath}
-            fill="none"
-            stroke="#2563eb"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+          <path d={linePath} fill="none" stroke="#2563eb" strokeWidth="2.5"
+            strokeLinecap="round" strokeLinejoin="round"
             strokeDasharray="2200"
             strokeDashoffset={drawn ? 0 : 2200}
             style={{ transition: "stroke-dashoffset 1.9s cubic-bezier(0.4,0,0.2,1)" }}
@@ -148,20 +142,17 @@ function TaskCompletionChart() {
           {/* Hover crosshair + dot */}
           {hov !== null && (
             <>
-              <line
-                x1={cx(hov)} y1={PAD.t} x2={cx(hov)} y2={VH - PAD.b}
-                stroke="#94a3b8" strokeWidth="1" strokeDasharray="3 3"
-              />
+              <line x1={cx(hov)} y1={PAD.t} x2={cx(hov)} y2={VH - PAD.b}
+                stroke="#94a3b8" strokeWidth="1" strokeDasharray="3 3" />
               <circle cx={cx(hov)} cy={cy(pts[hov].val)} r="6" fill="#2563eb" opacity="0.2" />
               <circle cx={cx(hov)} cy={cy(pts[hov].val)} r="4" fill="white" stroke="#2563eb" strokeWidth="2.5" />
             </>
           )}
 
-          {/* Transparent overlay to capture mouse */}
           <rect x="0" y="0" width={VW} height={VH} fill="transparent" />
         </svg>
 
-        {/* Floating tooltip */}
+        {/* Tooltip */}
         {hov !== null && (
           <div
             className="absolute pointer-events-none bg-slate-900 text-white rounded-xl px-3 py-2 shadow-2xl z-20 text-[10px] whitespace-nowrap"
