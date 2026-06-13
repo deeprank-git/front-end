@@ -2,12 +2,12 @@
 import { useRouter } from "next/navigation";
 
 const USER = {
-  name:       "Adrian Cole",
-  email:      "adrian.cole@deeprank.io",
-  role:       "Employee",
-  department: "Engineering",
-  initial:    "A",
-  joined:     "March 2023",
+  name:       "James Wright",
+  email:      "james.wright@deeprank.io",
+  role:       "Manager",
+  department: "Product",
+  initial:    "J",
+  joined:     "January 2022",
   status:     "Active",
   workspace:  "DeepRank",
 };
@@ -144,10 +144,10 @@ export default function SettingsPage() {
           </div>
           <div>
             <p className="text-sm font-bold text-slate-900">{USER.workspace}</p>
-            <p className="text-xs text-slate-400 mt-0.5">Employee Suite · {USER.department}</p>
+            <p className="text-xs text-slate-400 mt-0.5">Manager Suite · {USER.department}</p>
           </div>
         </div>
-        <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-600">Member</span>
+        <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-600">Admin</span>
       </div>
 
     </div>
