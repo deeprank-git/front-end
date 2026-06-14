@@ -42,173 +42,169 @@ const upcoming = [
   { name: "Final QA Review",        due: "In 7 days", border: "border-l-green-400" },
 ];
 
-// ─── Weekly Activity Chart ────────────────────────────────────────────────────
+// ─── Weekly Progress Area Chart ───────────────────────────────────────────────
 
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const DAYS  = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const SVW   = 500, SVH = 130;
+const SPAD  = { t: 10, b: 6, l: 6, r: 6 };
 
 const WeeklyChart = () => {
-  const [bars, setBars]       = useState([]);
-  const [animated, setAnimated] = useState(false);
-  const [hovered, setHovered]  = useState(null);
-  const [summary, setSummary]  = useState({ completed: 0, inProgress: 0, pending: 0 });
+  const [pts,      setPts]      = useState([]);
+  const [drawn,    setDrawn]    = useState(false);
+  const [hov,      setHov]      = useState(null);
 
   useEffect(() => {
-    const generated = DAYS.map((day) => ({
-      day,
-      completed:  Math.floor(Math.random() * 8) + 3,
-      inProgress: Math.floor(Math.random() * 5) + 1,
-      pending:    Math.floor(Math.random() * 4),
+    const gen = DAYS.map((d) => ({
+      day: d,
+      val: Math.floor(Math.random() * 9) + 2,
     }));
-    setBars(generated);
-    setSummary({
-      completed:  generated.reduce((s, b) => s + b.completed, 0),
-      inProgress: generated.reduce((s, b) => s + b.inProgress, 0),
-      pending:    generated.reduce((s, b) => s + b.pending, 0),
-    });
-    const t = setTimeout(() => setAnimated(true), 100);
+    setPts(gen);
+    const t = setTimeout(() => setDrawn(true), 100);
     return () => clearTimeout(t);
   }, []);
 
-  const maxTotal = Math.max(...bars.map((b) => b.completed + b.inProgress + b.pending), 1);
-  const gridSteps = [1, 0.75, 0.5, 0.25, 0];
+  if (!pts.length) return null;
+
+  const vals   = pts.map((p) => p.val);
+  const minV   = Math.min(...vals);
+  const maxV   = Math.max(...vals);
+  const total  = vals.reduce((a, b) => a + b, 0);
+  const avg    = (total / vals.length).toFixed(1);
+  const best   = DAYS[vals.indexOf(maxV)];
+  const trend  = vals[vals.length - 1] >= vals[0];
+  const range  = maxV - minV || 1;
+
+  const cx = (i) => SPAD.l + (i / (pts.length - 1)) * (SVW - SPAD.l - SPAD.r);
+  const cy = (v) => SVH - SPAD.b - ((v - minV) / range) * (SVH - SPAD.t - SPAD.b);
+
+  const line = pts.reduce((acc, p, i) => {
+    if (i === 0) return `M ${cx(0)} ${cy(p.val)}`;
+    const cpx = (cx(i - 1) + cx(i)) / 2;
+    return `${acc} C ${cpx} ${cy(pts[i-1].val)} ${cpx} ${cy(p.val)} ${cx(i)} ${cy(p.val)}`;
+  }, "");
+
+  const area = `${line} L ${cx(pts.length-1)} ${SVH} L ${cx(0)} ${SVH} Z`;
+
+  const handleMouse = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const rx   = ((e.clientX - rect.left) / rect.width) * SVW;
+    const idx  = Math.round(((rx - SPAD.l) / (SVW - SPAD.l - SPAD.r)) * (pts.length - 1));
+    setHov(Math.max(0, Math.min(pts.length - 1, idx)));
+  };
 
   return (
-    <div className="lg:col-span-2 rounded-2xl bg-white border border-slate-200 shadow-sm p-5 flex flex-col gap-4">
+    <div className="lg:col-span-2 rounded-2xl bg-white border border-slate-200 shadow-sm p-5 flex flex-col gap-3">
 
       {/* Header */}
       <div className="flex items-start justify-between flex-shrink-0">
         <div>
-          <h3 className="text-sm font-bold text-slate-900">Weekly Task Activity</h3>
-          <p className="text-xs text-slate-400 mt-0.5">Live snapshot · new data on every refresh</p>
+          <h3 className="text-sm font-bold text-slate-900">This Week&apos;s Progress</h3>
+          <p className="text-xs text-slate-400 mt-0.5">Daily tasks completed · new data each session</p>
         </div>
-        <div className="flex items-center gap-4">
-          {[
-            { color: "bg-emerald-400", label: "Completed"  },
-            { color: "bg-blue-400",    label: "In Progress" },
-            { color: "bg-slate-300",   label: "Pending"     },
-          ].map(({ color, label }) => (
-            <span key={label} className="flex items-center gap-1.5 text-xs text-slate-500">
-              <span className={`w-2.5 h-2.5 rounded-sm ${color}`} />
-              {label}
-            </span>
-          ))}
-        </div>
+        <span className="text-[10px] font-bold tracking-wider text-slate-400 bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-md flex-shrink-0">
+          This Week
+        </span>
       </div>
 
       {/* Summary pills */}
-      <div className="grid grid-cols-4 gap-2 flex-shrink-0">
+      <div className="grid grid-cols-3 gap-2 flex-shrink-0">
         {[
-          { value: summary.completed,                               label: "Completed",   bg: "bg-emerald-50 border-emerald-100", text: "text-emerald-600", sub: "text-emerald-400" },
-          { value: summary.inProgress,                              label: "In Progress", bg: "bg-blue-50 border-blue-100",       text: "text-blue-600",    sub: "text-blue-400"    },
-          { value: summary.pending,                                 label: "Pending",     bg: "bg-slate-50 border-slate-200",     text: "text-slate-600",   sub: "text-slate-400"   },
-          { value: summary.completed + summary.inProgress + summary.pending, label: "Total", bg: "bg-indigo-50 border-indigo-100", text: "text-indigo-600",  sub: "text-indigo-400"  },
-        ].map(({ value, label, bg, text, sub }) => (
-          <div key={label} className={`rounded-xl border px-3 py-2.5 text-center ${bg}`}>
-            <p className={`text-xl font-black ${text}`}>{value}</p>
-            <p className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 ${sub}`}>{label}</p>
+          { val: total,  label: "Total Done",  bg: "bg-blue-50 border-blue-100",   text: "text-blue-600",  sub: "text-blue-400"  },
+          { val: avg,    label: "Avg / Day",   bg: "bg-slate-50 border-slate-100", text: "text-slate-700", sub: "text-slate-400" },
+          { val: best,   label: "Best Day",    bg: "bg-slate-50 border-slate-100", text: "text-slate-700", sub: "text-slate-400" },
+        ].map(({ val, label, bg, text, sub }) => (
+          <div key={label} className={`rounded-xl border px-3 py-2 ${bg}`}>
+            <p className={`text-lg font-black tracking-tight ${text}`}>{val}</p>
+            <p className={`text-[10px] font-semibold uppercase tracking-wider mt-0.5 ${sub}`}>{label}</p>
           </div>
         ))}
       </div>
 
-      {/* Chart — fills remaining space */}
-      <div className="flex-1 min-h-0 flex flex-col">
-        <div className="flex-1 relative">
+      {/* Chart — fills remaining height */}
+      <div
+        className="flex-1 relative min-h-[100px] cursor-crosshair"
+        onMouseMove={handleMouse}
+        onMouseLeave={() => setHov(null)}
+      >
+        <svg className="w-full h-full" viewBox={`0 0 ${SVW} ${SVH}`} preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="wkGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"   stopColor="#3b82f6" stopOpacity="0.13" />
+              <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.00" />
+            </linearGradient>
+          </defs>
 
-          {/* Horizontal grid lines with y-axis labels */}
-          {gridSteps.map((step) => (
-            <div
-              key={step}
-              className="absolute left-0 right-0 flex items-center gap-2 pointer-events-none"
-              style={{ top: `${(1 - step) * 100}%` }}
-            >
-              <span className="text-[9px] text-slate-300 font-medium w-5 text-right flex-shrink-0 -translate-y-1/2">
-                {Math.round(step * maxTotal)}
-              </span>
-              <div className="flex-1 border-t border-dashed border-slate-100" />
-            </div>
+          {/* Grid lines */}
+          {[0, 0.5, 1].map((lvl) => (
+            <line key={lvl}
+              x1={SPAD.l} y1={cy(minV + lvl * range)}
+              x2={SVW - SPAD.r} y2={cy(minV + lvl * range)}
+              stroke="#f1f5f9" strokeWidth="1"
+            />
           ))}
 
-          {/* Bars */}
-          <div className="absolute inset-0 pl-7 flex items-end gap-2 pb-6">
-            {bars.map((bar, i) => {
-              const total      = bar.completed + bar.inProgress + bar.pending;
-              const totalPct   = (total / maxTotal) * 100;
-              const isHov      = hovered === i;
+          {/* Area */}
+          <path d={area} fill="url(#wkGrad)"
+            style={{ opacity: drawn ? 1 : 0, transition: "opacity 0.8s ease 1.4s" }} />
 
-              return (
-                <div
-                  key={bar.day}
-                  className="flex-1 h-full flex flex-col justify-end items-center relative cursor-pointer"
-                  onMouseEnter={() => setHovered(i)}
-                  onMouseLeave={() => setHovered(null)}
-                >
-                  {/* Tooltip */}
-                  {isHov && (
-                    <div className="absolute bottom-[calc(100%-1.5rem)] mb-2 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-medium rounded-xl px-3 py-2 whitespace-nowrap z-20 shadow-xl pointer-events-none">
-                      <p className="font-bold text-white text-xs mb-1.5 text-center">{bar.day}</p>
-                      <div className="flex flex-col gap-1">
-                        <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> {bar.completed} completed</span>
-                        <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-blue-400" /> {bar.inProgress} in progress</span>
-                        <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-slate-400" /> {bar.pending} pending</span>
-                      </div>
-                      <div className="mt-1.5 pt-1.5 border-t border-slate-700 text-center text-slate-300">Total: <span className="text-white font-bold">{total}</span></div>
-                      <div className="absolute top-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-t-slate-900" />
-                    </div>
-                  )}
+          {/* Line — draws in */}
+          <path d={line} fill="none" stroke="#3b82f6" strokeWidth="2.5"
+            strokeLinecap="round" strokeLinejoin="round"
+            strokeDasharray="1500" strokeDashoffset={drawn ? 0 : 1500}
+            style={{ transition: "stroke-dashoffset 1.4s cubic-bezier(0.4,0,0.2,1)" }}
+          />
 
-                  {/* Stacked bar */}
-                  <div
-                    className="w-full rounded-t-lg overflow-hidden flex flex-col"
-                    style={{
-                      height: animated ? `${totalPct}%` : "0%",
-                      transition: `height 0.65s cubic-bezier(0.34,1.25,0.64,1) ${i * 0.07}s`,
-                      opacity: hovered !== null && !isHov ? 0.35 : 1,
-                      transform: isHov ? "scaleX(1.1)" : "scaleX(1)",
-                      transitionProperty: "height, opacity, transform",
-                      transitionDuration: "0.65s, 0.2s, 0.2s",
-                    }}
-                  >
-                    {/* Pending — top */}
-                    {bar.pending > 0 && (
-                      <div
-                        style={{
-                          flex: bar.pending,
-                          background: "linear-gradient(180deg, #f8fafc, #e2e8f0)",
-                          minHeight: "3px",
-                        }}
-                      />
-                    )}
-                    {/* In Progress — middle */}
-                    {bar.inProgress > 0 && (
-                      <div
-                        style={{
-                          flex: bar.inProgress,
-                          background: "linear-gradient(180deg, #93c5fd, #3b82f6)",
-                          minHeight: "3px",
-                        }}
-                      />
-                    )}
-                    {/* Completed — bottom */}
-                    {bar.completed > 0 && (
-                      <div
-                        style={{
-                          flex: bar.completed,
-                          background: "linear-gradient(180deg, #6ee7b7, #10b981)",
-                          minHeight: "3px",
-                        }}
-                      />
-                    )}
-                  </div>
+          {/* Dots — fade in after line */}
+          {drawn && pts.map((p, i) => (
+            <circle key={i} cx={cx(i)} cy={cy(p.val)} r="3.5"
+              fill="white" stroke="#3b82f6" strokeWidth="2"
+              style={{ opacity: drawn ? 1 : 0, transition: `opacity 0.3s ease ${0.2 + i * 0.07}s` }}
+            />
+          ))}
 
-                  {/* Day label */}
-                  <span className="absolute bottom-0 text-[10px] font-semibold text-slate-400">
-                    {bar.day}
-                  </span>
-                </div>
-              );
-            })}
+          {/* Hover crosshair */}
+          {hov !== null && (
+            <>
+              <line x1={cx(hov)} y1={SPAD.t} x2={cx(hov)} y2={SVH - SPAD.b}
+                stroke="#e2e8f0" strokeWidth="1" />
+              <circle cx={cx(hov)} cy={cy(pts[hov].val)} r="5"
+                fill="white" stroke="#3b82f6" strokeWidth="2.5" />
+              <circle cx={cx(hov)} cy={cy(pts[hov].val)} r="2.5"
+                fill="#3b82f6" />
+            </>
+          )}
+
+          <rect x="0" y="0" width={SVW} height={SVH} fill="transparent" />
+        </svg>
+
+        {/* Tooltip */}
+        {hov !== null && (
+          <div
+            className="absolute pointer-events-none bg-slate-800 text-white rounded-lg px-2.5 py-1.5 text-[10px] shadow-xl z-10 whitespace-nowrap"
+            style={{
+              left:      `${(cx(hov) / SVW) * 100}%`,
+              top:       `${(cy(pts[hov].val) / SVH) * 100}%`,
+              transform: "translateX(-50%) translateY(-130%)",
+            }}
+          >
+            <span className="font-bold">{pts[hov].day}</span>
+            <span className="text-blue-300 ml-1.5">{pts[hov].val} tasks</span>
+            <div className="absolute top-full left-1/2 -translate-x-1/2 border-[4px] border-transparent border-t-slate-800" />
           </div>
-        </div>
+        )}
+      </div>
+
+      {/* X-axis */}
+      <div className="flex items-center justify-between text-[10px] font-semibold text-slate-300 flex-shrink-0 px-0.5">
+        {DAYS.map((d) => <span key={d}>{d}</span>)}
+      </div>
+
+      {/* Footer */}
+      <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] font-medium text-slate-400 flex-shrink-0">
+        <span>{total} tasks completed this week</span>
+        <span className={`font-bold ${trend ? "text-blue-500" : "text-slate-400"}`}>
+          {trend ? "↑ Trending up" : "↓ Trending down"}
+        </span>
       </div>
     </div>
   );

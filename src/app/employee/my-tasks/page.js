@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNotifications } from "../../../components/NotificationContext";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
@@ -270,6 +270,14 @@ const AssignNewTaskModal = ({ onClose, onAssign }) => {
   const [dueDate,      setDueDate]      = useState("2024-10-24");
   const [priorityOpen, setPriorityOpen] = useState(false);
   const [errors,       setErrors]       = useState({});
+  const [animate,      setAnimate]      = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setAnimate(true), 10);
+    return () => clearTimeout(t);
+  }, []);
+
+  const handleClose = () => { setAnimate(false); setTimeout(onClose, 300); };
 
   const suggestions = employeeList.filter(
     (e) => e.toLowerCase().includes(search.toLowerCase()) && !assignees.includes(e)
@@ -298,113 +306,125 @@ const AssignNewTaskModal = ({ onClose, onAssign }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-3 md:mx-4 p-4 md:p-6 max-h-[90vh] overflow-y-auto">
+    <div className={`fixed inset-0 z-50 flex justify-end transition-opacity duration-300 ${animate ? "opacity-100" : "opacity-0"}`}>
+      <div className="absolute inset-0 bg-slate-900/30 backdrop-blur-sm" onClick={handleClose} />
+      <div className={`relative h-full w-full max-w-md bg-white shadow-2xl border-l border-slate-100 flex flex-col transform transition-transform duration-300 ease-out ${animate ? "translate-x-0" : "translate-x-full"}`}>
 
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-base font-bold text-slate-900">Assign New Task</h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors">
+        {/* Header */}
+        <div className="flex items-center justify-between px-8 py-6 border-b border-slate-100 flex-shrink-0">
+          <div>
+            <h2 className="text-base font-bold text-slate-900">Assign New Task</h2>
+            <p className="text-xs text-slate-400 mt-0.5">Fill in the details below</p>
+          </div>
+          <button onClick={handleClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
 
-        {/* Assign To */}
-        <div className="mb-4">
-          <label className="block text-xs font-semibold text-slate-600 mb-1.5">Assign To</label>
-          <div className="flex flex-wrap items-center gap-1.5 min-h-[42px] w-full rounded-xl border border-slate-200 bg-white px-3 py-2 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-400 transition-all">
-            {assignees.map((name) => (
-              <span key={name} className="flex items-center gap-1 bg-cyan-100 text-cyan-700 text-xs font-semibold px-2 py-1 rounded-lg">
-                <span className={`w-3 h-3 rounded-full ${avatarColor(name)} flex-shrink-0`} />
-                {name}
-                <button onClick={() => removeAssignee(name)} className="ml-0.5 hover:text-cyan-900">×</button>
-              </span>
-            ))}
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={assignees.length === 0 ? "Search employee by name..." : ""}
-              className="flex-1 min-w-[140px] text-sm outline-none placeholder-slate-400"
-            />
-          </div>
-          {search && suggestions.length > 0 && (
-            <div className="mt-1 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
-              {suggestions.map((e) => (
-                <button key={e} onClick={() => addAssignee(e)} className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left">
-                  <span className={`w-5 h-5 rounded-full ${avatarColor(e)} flex items-center justify-center text-white text-xs font-bold`}>{e[0]}</span>
-                  {e}
-                </button>
+        {/* Scrollable form */}
+        <div className="flex-1 overflow-y-auto px-8 py-6 space-y-5">
+
+          {/* Assign To */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Assign To</label>
+            <div className="flex flex-wrap items-center gap-1.5 min-h-[42px] w-full rounded-xl border border-slate-200 bg-white px-3 py-2 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-400 transition-all">
+              {assignees.map((name) => (
+                <span key={name} className="flex items-center gap-1 bg-cyan-100 text-cyan-700 text-xs font-semibold px-2 py-1 rounded-lg">
+                  <span className={`w-3 h-3 rounded-full ${avatarColor(name)} flex-shrink-0`} />
+                  {name}
+                  <button onClick={() => removeAssignee(name)} className="ml-0.5 hover:text-cyan-900">×</button>
+                </span>
               ))}
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={assignees.length === 0 ? "Search employee by name..." : ""}
+                className="flex-1 min-w-[140px] text-sm outline-none placeholder-slate-400"
+              />
             </div>
-          )}
-          {errors.assignees && <p className="mt-1 text-xs text-red-500">{errors.assignees}</p>}
-        </div>
-
-        {/* Task Title */}
-        <div className="mb-4">
-          <label className="block text-xs font-semibold text-slate-600 mb-1.5">Task Title</label>
-          <input
-            value={taskTitle}
-            onChange={(e) => setTaskTitle(e.target.value)}
-            placeholder="Enter task title..."
-            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
-          />
-          {errors.taskTitle && <p className="mt-1 text-xs text-red-500">{errors.taskTitle}</p>}
-        </div>
-
-        {/* Task Description */}
-        <div className="mb-4">
-          <label className="block text-xs font-semibold text-slate-600 mb-1.5">Task Description</label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Describe the task in detail..."
-            rows={3}
-            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all resize-none"
-          />
-        </div>
-
-        {/* Priority + Due Date */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="relative">
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Priority</label>
-            <button
-              type="button"
-              onClick={() => setPriorityOpen(!priorityOpen)}
-              className="w-full flex items-center justify-between gap-2 rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-800 bg-white focus:outline-none"
-            >
-              <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${currentDot}`} />
-                {priority}
-              </div>
-              <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-            </button>
-            {priorityOpen && (
-              <div className="absolute z-10 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
-                {priorityOptions.map((opt) => (
-                  <button key={opt.label} onClick={() => { setPriority(opt.label); setPriorityOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 text-left">
-                    <span className={`w-2 h-2 rounded-full ${opt.dot}`} />{opt.label}
+            {search && suggestions.length > 0 && (
+              <div className="mt-1 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
+                {suggestions.map((e) => (
+                  <button key={e} onClick={() => addAssignee(e)} className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left">
+                    <span className={`w-5 h-5 rounded-full ${avatarColor(e)} flex items-center justify-center text-white text-xs font-bold`}>{e[0]}</span>
+                    {e}
                   </button>
                 ))}
               </div>
             )}
+            {errors.assignees && <p className="mt-1 text-xs text-red-500">{errors.assignees}</p>}
           </div>
+
+          {/* Task Title */}
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Due Date</label>
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Task Title</label>
             <input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+              value={taskTitle}
+              onChange={(e) => setTaskTitle(e.target.value)}
+              placeholder="Enter task title..."
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
+            />
+            {errors.taskTitle && <p className="mt-1 text-xs text-red-500">{errors.taskTitle}</p>}
+          </div>
+
+          {/* Task Description */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Task Description</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Describe the task in detail..."
+              rows={4}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all resize-none"
             />
           </div>
+
+          {/* Priority + Due Date */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="relative">
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Priority</label>
+              <button
+                type="button"
+                onClick={() => setPriorityOpen(!priorityOpen)}
+                className="w-full flex items-center justify-between gap-2 rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-800 bg-white focus:outline-none"
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${currentDot}`} />
+                  {priority}
+                </div>
+                <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+              </button>
+              {priorityOpen && (
+                <div className="absolute z-10 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
+                  {priorityOptions.map((opt) => (
+                    <button key={opt.label} onClick={() => { setPriority(opt.label); setPriorityOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 text-left">
+                      <span className={`w-2 h-2 rounded-full ${opt.dot}`} />{opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Due Date</label>
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+              />
+            </div>
+          </div>
+
         </div>
 
-        <div className="flex items-center justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors">Cancel</button>
-          <button onClick={handleSubmit} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm">
+        {/* Fixed footer */}
+        <div className="px-8 py-5 border-t border-slate-100 flex flex-col gap-3 bg-white flex-shrink-0">
+          <button onClick={handleSubmit} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
             Assign Task
+          </button>
+          <button onClick={handleClose} className="w-full px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors">
+            Cancel
           </button>
         </div>
 
